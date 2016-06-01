@@ -1,0 +1,372 @@
+<html>
+<head>
+ 	<title>DEMO</title>
+ 	<style type="text/css">
+		body,h1,h2,h3,h4,h5,h6,hr,p,blockquote,dl,dt,dd,ul,ol,li,pre,form,fieldset,legend,button,input,textarea,th,td{margin:0;padding:0}
+		html{color:#000;overflow-y:scoll;overflow:-moz-scrollbars-vertical}
+		.div{position:absolute;border: dashed 1px blue; width:0px; height:0px;left:0px; top:0px; overflow:hidden;}
+		#label{width: 500px;overflow: hidden;}
+		.retc{position:absolute; top: 20px; opacity: 0.5; border:1px solid #CCCCCC; background:#EFEFEF;cursor:move;}
+		i{
+			position: absolute;width: 20px;height: 5px;background-color: rgba(231, 36, 36, 0.7);cursor:crosshair; display: none;}
+		i::after{
+			content: "";
+			position: absolute;width: 5px;height: 20px;background-color: rgba(231, 36, 36, 0.7);cursor:crosshair
+		}
+		/*.i_lt{left: 0px;top: 0px;}
+		.i_rt{right: 0px;top: 0px;}
+		.i_lb{left: 0px;bottom: 0px;}*/
+		.i_rb{right: -6px;bottom: -6px;}
+
+		/*.i_lt:after{top: 0px;left: 0;}
+		.i_rt:after{top: 0px;right: 0;}
+		.i_lb:after{bottom: 0px;left: 0;}*/
+		.i_rb:after{bottom: 0px;right: 0;}
+	</style>
+</head>
+<body>
+	<input type="file" name="file" id="post_file">
+	<div id="label">
+		<canvas id="get_image" width="500" height="400" flag="false"></canvas>
+		<canvas id="edit_pic" width="500" height="400"></canvas>
+	</div>
+	<p id="show_edit">
+	 	<img />
+	</p>
+ <script type="text/javascript">
+ 	var postFile = {
+ 		settings: {
+ 			postFileButton : document.getElementById('post_file'),
+			getImage : document.getElementById('get_image'),
+			editPic : document.getElementById('edit_pic'),
+			mask: document.getElementById('mask'),
+			show_edit_img: document.getElementById('show_edit').getElementsByTagName('img')[0],
+			startX : document.getElementById('get_image').offsetLeft, 
+			startY : document.getElementById('get_image').offsetTop,
+			retcLeft : "0px", 
+			retcTop : "0px", 
+			retcHeight : "0px", 
+			retcWidth : "0px"
+ 		},
+		init: function() {
+			var t = this,
+				getImage = t.settings.getImage;
+
+			t.settings.postFileButton.addEventListener("change", t.handleFiles, false);
+			getImage.addEventListener("mousedown", function(e){
+				t.mouseDown(e);
+			}, false);
+			document.addEventListener("mousemove", function(e){
+				t.mouseMove(e);
+			}, false);
+			document.addEventListener("mouseup", function(e){				
+				t.mouseUp(e);
+			}, false);
+		},
+		handleFiles: function() {
+			var t = this,
+				fileList = this.files[0],
+				oFReader = new FileReader();
+			oFReader.readAsDataURL(fileList);
+			oFReader.onload = function () {
+			 	postFile.paintImage(oFReader.result);
+			};
+		},
+		paintImage: function(url) {
+			var t = this,
+				getImage = t.settings.getImage,
+				editPic = t.settings.editPic,
+				show_edit_img = t.settings.show_edit_img,
+				createCanvas = getImage.getContext("2d"),
+				editCanvas = editPic.getContext("2d"),
+				img = new Image();
+			img.src = url;
+
+			/*归零*/
+			createCanvas.clearRect(0, 0, getImage.offsetWidth, getImage.offsetHeight);
+			if(t.$('mask')){
+				document.body.removeChild(t.$('mask'));
+			}
+			show_edit_img.src = '';
+			editCanvas.clearRect(0, 0, editPic.offsetWidth, editPic.offsetHeight);
+			/*---*/
+
+			img.onload = function(){
+				createCanvas.drawImage(img,0,0);
+				imgUrl = t.settings.getImage.toDataURL();
+			};
+		},
+		cutImage: function(retcLeft,retcTop,retcWidth,retcHeight) {
+			var t = this,
+				editPic = t.settings.editPic,
+				show_edit_img = t.settings.show_edit_img,
+				x = retcLeft,
+				y = retcTop,
+				width = retcWidth,
+				height = retcHeight,
+				ctx = t.settings.editPic.getContext('2d'),
+				images = new Image();
+			images.src = imgUrl;
+			
+			images.onload = function(){
+				//清空画布
+				ctx.clearRect(0, 0, editPic.offsetWidth, editPic.offsetHeight);
+				/*
+					context.drawImage(img,sx,sy,swidth,sheight,x,y,width,height);
+					img	规定要使用的图像、画布或视频。
+					sx	可选。开始剪切的 x 坐标位置。
+					sy	可选。开始剪切的 y 坐标位置。
+					swidth	可选。被剪切图像的宽度。
+					sheight	可选。被剪切图像的高度。
+					x	在画布上放置图像的 x 坐标位置。
+					y	在画布上放置图像的 y 坐标位置。
+					width	可选。要使用的图像的宽度。（伸展或缩小图像）
+					height	可选。要使用的图像的高度。（伸展或缩小图像）
+				*/
+			 	ctx.drawImage(images, x, y, width, height, 0, 0, width, height); //裁剪图片
+			 	show_edit_img.src = t.settings.editPic.toDataURL();
+			 	
+			 	/*设置裁切出的图片显示大小*/
+			 	// show_edit.style.width = width;
+			 	// show_edit.style.height = height;
+			}
+		},
+		mouseDown: function(e){
+			var t = this,
+				evt = window.event || e,
+				getImage = t.settings.getImage,
+				div = document.createElement("div");
+
+			try{
+				getImage.setAttribute("flag","true");
+				
+				//虚线框选区
+				div.id = "district";
+				div.className = "div";
+				div.style.marginLeft = evt.clientX + "px";
+				div.style.marginTop = evt.clientY + "px";
+				document.body.appendChild(div);
+			}catch(e){}
+		},
+		mouseMove: function(e){
+			var t = this,
+				evt = window.event || e,
+				getImage = t.settings.getImage,
+				flag = getImage.getAttribute("flag");
+			//动态设置虚线框选区大小
+			if(flag && t.$('district')){
+				try{
+					var startX = t.$('district').style.marginLeft.slice(0,-2),
+						startY = t.$('district').style.marginTop.slice(0,-2),
+						retcHeight = Math.abs(startY - evt.clientY) + "px",
+						retcWidth = Math.abs(startX - evt.clientX) + "px";
+					t.$('district').style.width = retcWidth;
+					t.$('district').style.height = retcHeight;
+				}catch(e){}	
+			}
+		},
+		mouseUp: function(e){
+			var t = this,
+				evt = window.event || e,
+				mask = t.settings.mask,
+				getImage = t.settings.getImage,
+				div = document.createElement("div"),
+				// i_lt = document.createElement("i"),
+				// i_rt = document.createElement("i"),
+				// i_lb = document.createElement("i"),
+				i_rb = document.createElement("i");
+
+			getImage.setAttribute("flag","false");
+			if(t.$('district')){
+				var startX = t.$('district').style.marginLeft.slice(0,-2) - t.settings.startX,
+					startY = t.$('district').style.marginTop.slice(0,-2) - t.settings.startY,
+					endX = evt.clientX - t.settings.startX,
+					endY = evt.clientY - t.settings.startY,
+					retcWidth = endX - startX,
+					retcHeight = endY - startY;
+				try{
+					//删除虚线选框
+					document.body.removeChild(t.$('district'));
+
+					//蒙层选区
+					div.className = "retc";
+					div.id = "mask";
+					div.style.marginLeft = startX;
+					div.style.marginTop = startY;
+					div.style.width = retcWidth;
+					div.style.height = retcHeight;
+					div.setAttribute("movable",'false');
+					div.setAttribute("editable",'false');
+
+					//可编辑选框的按钮
+					// i_lt.className = "i_lt";
+					// i_rt.className = "i_rt";
+					// i_lb.className = "i_lb";
+					i_rb.className = "i_rb";
+					i_rb.id = "i_rb";
+
+					//蒙层绑定拖动位置方法
+					document.addEventListener("mousedown", function(e){
+						t.maskMouseDown(e);
+					}, false);
+
+					document.addEventListener("mouseup", function(e){
+						t.maskMouseUp(e);
+					}, false);
+
+					if(t.$('mask')){
+						document.body.removeChild(t.$('mask'));
+					}
+
+					document.body.appendChild(div);
+					// div.appendChild(i_lt);
+					// div.appendChild(i_rt);
+					// div.appendChild(i_lb);
+					div.appendChild(i_rb);
+
+					//鼠标移上蒙层显示编辑按钮
+					div.addEventListener("mouseenter", function(){
+						t.$("i_rb").style.display = "block";
+					}, false)
+					//鼠标移开蒙层隐藏编辑按钮
+					div.addEventListener("mouseleave", function(){
+						t.$("i_rb").style.display = "none";
+					}, false)
+
+
+					document.addEventListener("mousedown", function(e){
+						t.iMouseDown(e);
+					}, false)
+					document.addEventListener("mouseup", function(e){
+						t.iMouseUp(e);
+					}, false)
+
+					//裁切图片
+					t.cutImage(startX,startY,retcWidth,retcHeight);
+
+				}catch(e){}
+			}
+		},
+		maskMouseDown: function(e){
+			var t = this,
+				evt = window.event || e,
+				mask = t.$('mask'),
+				movable,
+				startX,
+				startY,
+				maskL,
+				maskW;
+
+			if(mask){
+				maskL = mask.style.marginLeft.slice(0,-2);
+				maskW = mask.style.width.slice(0,-2);
+
+				//拖动蒙层
+				if(evt.clientX > maskL && evt.clientX < parseInt(maskL) + parseInt(maskW) &&
+					evt.clientY > maskT && evt.clientY < parseInt(maskT) + parseInt(maskH)){
+					movable = mask.getAttribute("movable");
+					startX = evt.clientX - mask.offsetLeft;
+					startY = evt.clientY - mask.offsetTop;
+					mask.setAttribute("movable","true");
+				}
+			}
+			
+			if(movable){
+				document.addEventListener("mousemove", function(e){
+					t.maskMouseMove(e,startX,startY);
+				}, false);
+			}
+		},
+		maskMouseMove: function(e,startX,startY){
+			var t = this,
+				evt = window.event || e,
+				mask = t.$('mask'),
+				newX = evt.clientX,
+				newY = evt.clientY,
+				maskX = mask.style.marginLeft,
+				maskY = mask.style.marginTop,
+				maskW = mask.style.width.slice(0,-2),
+				maskH = mask.style.height.slice(0,-2),
+				movable = mask.getAttribute("movable");
+			
+			//动态改变蒙层位置
+			if(movable == 'true'){
+				mask.style.marginLeft = newX - startX + 'px';
+				mask.style.marginTop = newY - startY + 'px';
+				//裁切图片
+				t.cutImage(newX - startX,newY - startY,maskW,maskH);
+			}
+		},
+		maskMouseUp: function(e){
+			var t = this,
+				mask = t.$('mask');
+
+			mask.setAttribute("movable","false");
+		},
+		iMouseDown: function(e){
+			var t = this,
+				evt = window.event || e,
+				mask = t.$('mask'),
+				editable,
+				startX,
+				startY,
+				maskW,
+				maskH;
+			if(mask){
+				editable = mask.getAttribute("editable");
+				startX = parseInt(mask.style.marginLeft.slice(0,-2));
+				startY = parseInt(mask.style.marginTop.slice(0,-2));
+				maskW = parseInt(mask.style.width.slice(0,-2));
+				maskH = parseInt(mask.style.height.slice(0,-2));
+
+				//拖动编辑按钮
+				if(evt.clientX > startX + maskW && evt.clientY > startY + maskH){
+					mask.setAttribute("editable",'true');
+				}
+				document.addEventListener("mousemove", function(e){
+					t.iMouseMove(e, startX, startY, maskW, maskH);
+				}, false);
+			}
+				
+		},
+		iMouseMove: function(e, startX, startY, maskW, maskH){
+			var t = this,
+				evt = window.event || e,
+				mask = t.$('mask'),
+				maskL,
+				maskT,
+				editable,
+				moveX,
+				moveY;
+
+			if(mask){
+				maskL= mask.style.marginLeft.slice(0,-2);
+				maskT = mask.style.marginTop.slice(0,-2);
+				editable = mask.getAttribute("editable");
+			}
+			//动态改变蒙层大小
+			if(editable == "true"){
+				moveX = evt.clientX - (startX + maskW);
+				moveY = evt.clientY - (startY + maskH);
+				mask.style.width = maskW + moveX + "px";
+				mask.style.height = maskH + moveY + "px";
+
+				//同时改变裁切的图片大小（重绘）
+				t.cutImage(maskL, maskT, maskW + moveX, maskH + moveY);
+			}
+
+		},
+		iMouseUp: function(e){
+			var t = this,
+				mask = t.$('mask');
+
+			mask.setAttribute("editable","false");
+		},
+		$: function(id){
+			return document.getElementById(id);
+		}
+	}
+ 	postFile.init(); 
+ </script>
+</body>
+</html>
